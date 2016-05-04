@@ -35,6 +35,10 @@ import pprint
 import datetime
 import argparse
 
+# to print result in XML format
+from xml.etree.ElementTree import Element, SubElement, tostring, dump
+import xml.dom.minidom
+
 def _get_java_code(_class, _vmx):
     try:
         _ms = decompile.DvClass(_class, _vmx)
@@ -108,7 +112,7 @@ def _instantiates_get_insecure_socket_factory(_method):
 
 def _get_javab64_xref(_class, _vmx):
     _java_b64 = base64.b64encode(_get_java_code(_class, _vmx))
-    _xref = None
+    _xref = []
     try:
         _xref = _class.XREFfrom
         if _xref:
@@ -244,7 +248,7 @@ def _print_result(_result, _java=True):
         print "\tCustom HostnameVerifiers is implemented in class {:s}".format(_translate_class_name(_class_name))
         if _hv['empty']:
             print "\tImplements naive hostname verification. This HostnameVerifier breaks certificate validation!"
-        for _ref in _tm['xref']:
+        for _ref in _hv['xref']:
             print "\t\tReferenced in method {:s}->{:s}".format(_translate_class_name(_ref.get_class_name()), _ref.get_name())
         if _java:
             print "\t\tJavaSource code:"
@@ -258,83 +262,81 @@ def _print_result(_result, _java=True):
     for _aa in _result['allowallhostnameverifier']:
         _class_name = _translate_class_name(_aa['class'].get_name())
         print "\tAllowAllHostnameVerifier is instantiated in {:s}->{:s}".format(_class_name, _aa['method'].get_name())
-    if _java:
-        print "\t\tJavaSource code:"
-        print "{:s}".format(base64.b64decode(_aa['java_b64']))
+        for _ref in _aa['xref']:
+            print "\t\tReferenced in method {:s}->{:s}".format(_translate_class_name(_ref.get_class_name()), _ref.get_name())
+        if _java:
+            print "\t\tJavaSource code:"
+            print "{:s}".format(base64.b64decode(_aa['java_b64']))
 
 def _xml_result(_a, _result):
-    from xml.etree.ElementTree import Element, SubElement, tostring, dump
-    import xml.dom.minidom
+    if not filter(None, _result.values()):
+        print "No broken SSL certificate validation found.\n"
+        return
 
     _result_xml = Element('result')
     _result_xml.set('package', _a.get_package())
-    _tms = SubElement(_result_xml, 'trustmanagers')
-    _hvs = SubElement(_result_xml, 'hostnameverifiers')
-    _orse = SubElement(_result_xml, 'onreceivedsslerrors')
 
-    print "\nXML output:\n"
+    if _result['trustmanager'] or _result['insecuresocketfactory']:
+        _tms = SubElement(_result_xml, 'trustmanagers')
+        for _tm in _result['trustmanager']:
+            _class_name = _translate_class_name(_tm['class'].get_name())
+            _t = SubElement(_tms, 'trustmanager')
+            _t.set('class', _class_name)
+            if _tm['empty']:
+                _t.set('broken', 'True')
+            else:
+                _t.set('broken', 'Maybe')
 
-    for _tm in _result['trustmanager']:
-        _class_name = _translate_class_name(_tm['class'].get_name())
-        _t = SubElement(_tms, 'trustmanager')
-        _t.set('class', _class_name)
-        if _tm['empty']:
-            _t.set('broken', 'True')
-        else:
-            _t.set('broken', 'Maybe')
+            for _r in _tm['xref']:
+                _rs = SubElement(_t, 'xref')
+                _rs.set('class', _translate_class_name(_r.get_class_name()))
+                _rs.set('method', _r.get_name())
 
-        for _r in _tm['xref']:
-            _rs = SubElement(_t, 'xref')
-            _rs.set('class', _translate_class_name(_r.get_class_name()))
-            _rs.set('method', _r.get_name())
-
-    if len(_result['insecuresocketfactory']):
         for _is in _result['insecuresocketfactory']:
             _class_name = _translate_class_name(_is['class'].get_name())
             _i = SubElement(_tms, 'insecuresslsocket')
             _i.set('class', _class_name)
             _i.set('method', _is['method'].get_name())
-    else:
-        _i = SubElement(_tms, 'insecuresslsocket')
 
+    if _result['customhostnameverifier'] or _result['allowallhostnameverifier']:
+        _hvs = SubElement(_result_xml, 'hostnameverifiers')
 
-    for _hv in _result['customhostnameverifier']:
-        _class_name = _translate_class_name(_hv['class'].get_name())
-        _h = SubElement(_hvs, 'hostnameverifier')
-        _h.set('class', _class_name)
-        if _hv['empty']:
-            _h.set('broken', 'True')
-        else:
-            _h.set('broken', 'Maybe')
+        for _hv in _result['customhostnameverifier']:
+            _class_name = _translate_class_name(_hv['class'].get_name())
+            _h = SubElement(_hvs, 'hostnameverifier')
+            _h.set('class', _class_name)
+            if _hv['empty']:
+                _h.set('broken', 'True')
+            else:
+                _h.set('broken', 'Maybe')
 
-        for _ref in _hv['xref']:
-            _hs = SubElement(_h, 'xref')
-            _hs.set('class', _translate_class_name(_ref.get_class_name()))
-            _hs.set('method', _ref.get_name())
+            for _ref in _hv['xref']:
+                _hs = SubElement(_h, 'xref')
+                _hs.set('class', _translate_class_name(_ref.get_class_name()))
+                _hs.set('method', _ref.get_name())
 
-    if len(_result['allowallhostnameverifier']):
         for _aa in _result['allowallhostnameverifier']:
             _class_name = _translate_class_name(_aa['class'].get_name())
             _a = SubElement(_hvs, 'allowhostnames')
             _a.set('class', _class_name)
             _a.set('method', _aa['method'].get_name())
-    else:
-        _a = SubElement(_hvs, 'allowhostnames')
 
-    for _se in _result['onreceivedsslerror']:
-        _class_name = _translate_class_name(_se['class'].get_name())
-        _s = SubElement(_orse, 'sslerror')
-        _s.set('class', _class_name)
-        if _se['empty']:
-            _s.set('broken', 'True')
-        else:
-            _s.set('broken', 'Maybe')
+    if _result['onreceivedsslerror']:
+        _orse = SubElement(_result_xml, 'onreceivedsslerrors')
 
-        for _ref in _se['xref']:
-            _ss = SubElement(_s, 'xref')
-            _ss.set('class', _translate_class_name(_ref.get_class_name()))
-            _ss.set('method', _ref.get_name())
+        for _se in _result['onreceivedsslerror']:
+            _class_name = _translate_class_name(_se['class'].get_name())
+            _s = SubElement(_orse, 'sslerror')
+            _s.set('class', _class_name)
+            if _se['empty']:
+                _s.set('broken', 'True')
+            else:
+                _s.set('broken', 'Maybe')
 
+            for _ref in _se['xref']:
+                _ss = SubElement(_s, 'xref')
+                _ss.set('class', _translate_class_name(_ref.get_class_name()))
+                _ss.set('method', _ref.get_name())
 
     _xml = xml.dom.minidom.parseString(tostring(_result_xml, method="xml"))
     print _xml.toprettyxml()
