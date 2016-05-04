@@ -191,7 +191,7 @@ def _check_all(_vm, _vmx, _gx):
         if len(_a) > 0:
             _allow_all_hostname_verifier += _a
 
-         _tm, _i = _check_trust_manager(_method, _vm, _vmx)
+        _tm, _i = _check_trust_manager(_method, _vm, _vmx)
         if len(_tm) > 0:
             _custom_trust_manager += _tm
         if len(_i) > 0:
@@ -206,65 +206,61 @@ def _check_all(_vm, _vmx, _gx):
 def _print_result(_result, _java=True):
     print "Analysis result:"
 
-    if len(_result['trustmanager']) > 0:
-        if len(_result['trustmanager']) == 1:
-            print "App implements custom TrustManager:"
-        elif len(_result['trustmanager']) > 1:
-            print "App implements {:d} custom TrustManagers".format(len(_result['trustmanager']))
+    if len(_result['trustmanager']) == 1:
+        print "App implements custom TrustManager:"
+    elif len(_result['trustmanager']) > 1:
+        print "App implements {:d} custom TrustManagers".format(len(_result['trustmanager']))
 
-        for _tm in _result['trustmanager']:
-            _class_name = _tm['class'].get_name()
-            print "\tCustom TrustManager is implemented in class {:s}".format(_translate_class_name(_class_name))
-            if _tm['empty']:
-                print "\tImplements naive certificate check. This TrustManager breaks certificate validation!"
-            for _ref in _tm['xref']:
-                print "\t\tReferenced in method {:s}->{:s}".format(_translate_class_name(_ref.get_class_name()), _ref.get_name())
-            if _java:
-                print "\t\tJavaSource code:"
-                print "{:s}".format(base64.b64decode(_tm['java_b64']))
-
-    if len(_result['insecuresocketfactory']) > 0:
-        if len(_result['insecuresocketfactory']) == 1:
-            print "App instantiates insecure SSLSocketFactory:"
-        elif len(_result['insecuresocketfactory']) > 1:
-            print "App instantiates {:d} insecure SSLSocketFactorys".format(len(_result['insecuresocketfactory']))
-
-        for _is in _result['insecuresocketfactory']:
-            _class_name = _translate_class_name(_is['class'].get_name())
-            print "\tInsecure SSLSocketFactory is instantiated in {:s}->{:s}".format(_class_name, _is['method'].get_name())
-            if _java:
-                print "\t\tJavaSource code:"
-                print "{:s}".format(base64.b64decode(_is['java_b64']))
-
-    if len(_result['customhostnameverifier']) > 0:
-        if len(_result['customhostnameverifier']) == 1:
-            print "App implements custom HostnameVerifier:"
-        elif len(_result['customhostnameverifier']) > 1:
-            print "App implements {:d} custom HostnameVerifiers".format(len(_result['customhostnameverifier']))
-
-        for _hv in _result['customhostnameverifier']:
-            _class_name = _hv['class'].get_name()
-            print "\tCustom HostnameVerifiers is implemented in class {:s}".format(_translate_class_name(_class_name))
-            if _hv['empty']:
-                print "\tImplements naive hostname verification. This HostnameVerifier breaks certificate validation!"
-            for _ref in _tm['xref']:
-                print "\t\tReferenced in method {:s}->{:s}".format(_translate_class_name(_ref.get_class_name()), _ref.get_name())
-            if _java:
-                print "\t\tJavaSource code:"
-                print "{:s}".format(base64.b64decode(_hv['java_b64']))
-
-    if len(_result['allowallhostnameverifier']) > 0:
-        if len(_result['allowallhostnameverifier']) == 1:
-            print "App instantiates AllowAllHostnameVerifier:"
-        elif len(_result['allowallhostnameverifier']) > 1:
-            print "App instantiates {:d} AllowAllHostnameVerifiers".format(len(_result['allowallhostnameverifier']))
-
-        for _aa in _result['allowallhostnameverifier']:
-            _class_name = _translate_class_name(_aa['class'].get_name())
-            print "\tAllowAllHostnameVerifier is instantiated in {:s}->{:s}".format(_class_name, _aa['method'].get_name())
+    for _tm in _result['trustmanager']:
+        _class_name = _tm['class'].get_name()
+        print "\tCustom TrustManager is implemented in class {:s}".format(_translate_class_name(_class_name))
+        if _tm['empty']:
+            print "\tImplements naive certificate check. This TrustManager breaks certificate validation!"
+        for _ref in _tm['xref']:
+            print "\t\tReferenced in method {:s}->{:s}".format(_translate_class_name(_ref.get_class_name()), _ref.get_name())
         if _java:
             print "\t\tJavaSource code:"
-            print "{:s}".format(base64.b64decode(_aa['java_b64']))
+            print "{:s}".format(base64.b64decode(_tm['java_b64']))
+
+    if len(_result['insecuresocketfactory']) == 1:
+        print "App instantiates insecure SSLSocketFactory:"
+    elif len(_result['insecuresocketfactory']) > 1:
+        print "App instantiates {:d} insecure SSLSocketFactorys".format(len(_result['insecuresocketfactory']))
+
+    for _is in _result['insecuresocketfactory']:
+        _class_name = _translate_class_name(_is['class'].get_name())
+        print "\tInsecure SSLSocketFactory is instantiated in {:s}->{:s}".format(_class_name, _is['method'].get_name())
+        if _java:
+            print "\t\tJavaSource code:"
+            print "{:s}".format(base64.b64decode(_is['java_b64']))
+
+    if len(_result['customhostnameverifier']) == 1:
+        print "App implements custom HostnameVerifier:"
+    elif len(_result['customhostnameverifier']) > 1:
+        print "App implements {:d} custom HostnameVerifiers".format(len(_result['customhostnameverifier']))
+
+    for _hv in _result['customhostnameverifier']:
+        _class_name = _hv['class'].get_name()
+        print "\tCustom HostnameVerifiers is implemented in class {:s}".format(_translate_class_name(_class_name))
+        if _hv['empty']:
+            print "\tImplements naive hostname verification. This HostnameVerifier breaks certificate validation!"
+        for _ref in _tm['xref']:
+            print "\t\tReferenced in method {:s}->{:s}".format(_translate_class_name(_ref.get_class_name()), _ref.get_name())
+        if _java:
+            print "\t\tJavaSource code:"
+            print "{:s}".format(base64.b64decode(_hv['java_b64']))
+
+    if len(_result['allowallhostnameverifier']) == 1:
+        print "App instantiates AllowAllHostnameVerifier:"
+    elif len(_result['allowallhostnameverifier']) > 1:
+        print "App instantiates {:d} AllowAllHostnameVerifiers".format(len(_result['allowallhostnameverifier']))
+
+    for _aa in _result['allowallhostnameverifier']:
+        _class_name = _translate_class_name(_aa['class'].get_name())
+        print "\tAllowAllHostnameVerifier is instantiated in {:s}->{:s}".format(_class_name, _aa['method'].get_name())
+    if _java:
+        print "\t\tJavaSource code:"
+        print "{:s}".format(base64.b64decode(_aa['java_b64']))
 
 def _xml_result(_a, _result):
     from xml.etree.ElementTree import Element, SubElement, tostring, dump
